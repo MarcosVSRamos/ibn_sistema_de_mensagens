@@ -32,14 +32,14 @@ async function conectarWhatsApp() {
 
     sock.ev.on('connection.update', async ({ connection, qr, lastDisconnect }) => {
 
-        if(qr) {
+        if (!sock.authState.creds.registered) {
 
-            console.log('\nESCANEIE O QR CODE:\n')
+    const numero = '556799522956'
 
-            qrcode.generate(qr, {
-                small: true
-            })
-        }
+    const code = await sock.requestPairingCode(numero)
+
+    console.log(`\nCódigo de pareamento: ${code}\n`)
+}
 
         if(connection === 'open') {
 
