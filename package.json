@@ -1,0 +1,25 @@
+{
+  "name": "mensagens_automaticas_ibn",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "engines": {
+    "node": "20.x"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@whiskeysockets/baileys": "6.7.18",
+    "axios": "^1.16.1",
+    "dotenv": "^17.4.2",
+    "googleapis": "^172.0.0",
+    "node-cron": "^4.2.1",
+    "qrcode-terminal": "^0.12.0"
+  }
+}
