@@ -9,6 +9,7 @@ const {
     useMultiFileAuthState
 } = baileys
 
+
 import qrcode from 'qrcode-terminal'
 
 import { google } from 'googleapis'
@@ -187,7 +188,7 @@ Deus abençoe!
                     text: mensagem
                 })
 
-                console.log(\`Mensagem enviada para \${nome}\`)
+                console.log(`Mensagem enviada para ${nome}`)
             }
         }
 
