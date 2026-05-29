@@ -24,32 +24,56 @@ async function conectarWhatsApp() {
     const { version } = await fetchLatestBaileysVersion()
 
     const sock = makeWASocket({
-        version,
-        auth: state
-    })
+    version,
+    auth: state,
+    browser: ['Chrome', 'Desktop', '1.0.0'],
+    syncFullHistory: false,
+    markOnlineOnConnect: false
+})
 
     sock.ev.on('creds.update', saveCreds)
+
 
     let codigoJaGerado = false
 
     sock.ev.on('connection.update', async ({ connection, lastDisconnect }) => {
 
-        if (!sock.authState.creds.registered && !codigoJaGerado) {
+        if (
+            connection === 'connecting' &&
+            !sock.authState.creds.registered &&
+            !codigoJaGerado
+        ) {
 
             codigoJaGerado = true
 
-            const code = await sock.requestPairingCode('556799522956')
+            setTimeout(async () => {
 
-            console.log('\n============================')
-            console.log(`CÓDIGO: ${code}`)
-            console.log('============================\n')
+                try {
+
+                    const code = await sock.requestPairingCode('556799522956')
+
+                    console.log('\n============================')
+                    console.log(`CÓDIGO: ${code}`)
+                    console.log('============================\n')
+
+                } catch(err) {
+
+                    console.log('Erro ao gerar código:', err)
+                }
+
+            }, 10000)
         }
 
         if(connection === 'open') {
 
             console.log('\nWhatsApp conectado!\n')
 
-            iniciarSistema(sock)
+            if(!sistemaIniciado) {
+
+                sistemaIniciado = true
+
+                iniciarSistema(sock)
+            }
         }
 
         if(connection === 'close') {
@@ -61,9 +85,11 @@ async function conectarWhatsApp() {
 
             if(shouldReconnect) {
 
-                console.log('Reconectando...\n')
+            console.log('Reconectando em 5 segundos...\n')
 
-                conectarWhatsApp()
+                setTimeout(() => {
+                    conectarWhatsApp()
+                }, 5000)
             }
         }
     })
@@ -165,6 +191,4 @@ Deus abençoe!
     }
 }
 
-setTimeout(() => {
-    conectarWhatsApp()
-}, 5000)
+conectarWhatsApp()
