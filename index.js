@@ -10,7 +10,7 @@ const {
 } = baileys
 
 
-import qrcode from 'qrcode-terminal'
+import QRCode from 'qrcode'
 
 import { google } from 'googleapis'
 
@@ -45,13 +45,14 @@ async function conectarWhatsApp() {
 
             if (qr) {
 
-                console.clear()
-
-                console.log('\nESCANEIE O QR CODE:\n')
-
-                qrcode.generate(qr, {
-                    small: true
+                const qrBase64 = await QRCode.toDataURL(qr, {
+                    width: 500,
+                    margin: 2
                 })
+
+                console.log('\n============================')
+                console.log(qrBase64)
+                console.log('============================\n')
             }
 
             if (connection === 'open') {
