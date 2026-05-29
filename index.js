@@ -18,7 +18,7 @@ import cron from 'node-cron'
 let sistemaIniciado = false
 
 async function conectarWhatsApp() {
-    
+
     const { state, saveCreds } = await useMultiFileAuthState('auth')
 
     const { version } = await fetchLatestBaileysVersion()
@@ -30,26 +30,26 @@ async function conectarWhatsApp() {
 
     sock.ev.on('creds.update', saveCreds)
 
-    sock.ev.on('connection.update', async ({ connection, qr, lastDisconnect }) => {
+    let codigoJaGerado = false
 
-        if (!sock.authState.creds.registered) {
+    sock.ev.on('connection.update', async ({ connection, lastDisconnect }) => {
 
-    const numero = '556799522956'
+        if (!sock.authState.creds.registered && !codigoJaGerado) {
 
-    const code = await sock.requestPairingCode(numero)
+            codigoJaGerado = true
 
-    console.log(`\nCódigo de pareamento: ${code}\n`)
-}
+            const code = await sock.requestPairingCode('556799522956')
+
+            console.log('\n============================')
+            console.log(`CÓDIGO: ${code}`)
+            console.log('============================\n')
+        }
 
         if(connection === 'open') {
 
             console.log('\nWhatsApp conectado!\n')
 
-            if(!sistemaIniciado) {
-
-                sistemaIniciado = true
-                iniciarSistema(sock)
-            }
+            iniciarSistema(sock)
         }
 
         if(connection === 'close') {
