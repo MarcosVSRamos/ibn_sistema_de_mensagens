@@ -9,90 +9,106 @@ const {
     useMultiFileAuthState
 } = baileys
 
-import qrcode from 'qrcode-terminal'
+import QRCode from 'qrcode'
 
 import { google } from 'googleapis'
 
 import cron from 'node-cron'
 
 let sistemaIniciado = false
+let reconectando = false
 
 async function conectarWhatsApp() {
 
-    const { state, saveCreds } = await useMultiFileAuthState('auth')
+    try {
 
-    const { version } = await fetchLatestBaileysVersion()
+        const { state, saveCreds } = await useMultiFileAuthState('auth')
 
-    const sock = makeWASocket({
-    version,
-    auth: state,
-    browser: ['Chrome', 'Desktop', '1.0.0'],
-    syncFullHistory: false,
-    markOnlineOnConnect: false
-})
+        const { version } = await fetchLatestBaileysVersion()
 
-    sock.ev.on('creds.update', saveCreds)
+        const sock = makeWASocket({
+            version,
+            auth: state,
+            browser: ['Chrome', 'Desktop', '1.0.0'],
+            syncFullHistory: false,
+            markOnlineOnConnect: false
+        })
 
+        sock.ev.on('creds.update', saveCreds)
 
-    let codigoJaGerado = false
+        sock.ev.on('connection.update', async ({ connection, qr, lastDisconnect }) => {
 
-    sock.ev.on('connection.update', async ({ connection, lastDisconnect }) => {
-
-        if (
-            connection === 'connecting' &&
-            !sock.authState.creds.registered &&
-            !codigoJaGerado
-        ) {
-
-            codigoJaGerado = true
-
-            setTimeout(async () => {
+            if (qr) {
 
                 try {
 
-                    const code = await sock.requestPairingCode('556799522956')
+                    const qrBase64 = await QRCode.toDataURL(qr)
 
                     console.log('\n============================')
-                    console.log(`CÓDIGO: ${code}`)
-                    console.log('============================\n')
+                    console.log('COPIE O LINK ABAIXO E COLE NO NAVEGADOR:\n')
+                    console.log(qrBase64)
+                    console.log('\n============================\n')
 
-                } catch(err) {
+                } catch (err) {
 
-                    console.log('Erro ao gerar código:', err)
+                    console.log('Erro ao gerar QR Code:', err)
                 }
-
-            }, 10000)
-        }
-
-        if(connection === 'open') {
-
-            console.log('\nWhatsApp conectado!\n')
-
-            if(!sistemaIniciado) {
-
-                sistemaIniciado = true
-
-                iniciarSistema(sock)
             }
-        }
 
-        if(connection === 'close') {
+            if (connection === 'connecting') {
 
-            const shouldReconnect =
-                lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut
-
-            console.log('\nConexão fechada\n')
-
-            if(shouldReconnect) {
-
-            console.log('Reconectando em 5 segundos...\n')
-
-                setTimeout(() => {
-                    conectarWhatsApp()
-                }, 5000)
+                console.log('Conectando ao WhatsApp...')
             }
-        }
-    })
+
+            if (connection === 'open') {
+
+                console.log('\nWhatsApp conectado!\n')
+
+                reconectando = false
+
+                if (!sistemaIniciado) {
+
+                    sistemaIniciado = true
+
+                    iniciarSistema(sock)
+                }
+            }
+
+            if (connection === 'close') {
+
+                const statusCode =
+                    lastDisconnect?.error?.output?.statusCode
+
+                const shouldReconnect =
+                    statusCode !== DisconnectReason.loggedOut
+
+                console.log('\nConexão fechada\n')
+
+                if (shouldReconnect && !reconectando) {
+
+                    reconectando = true
+
+                    console.log('Reconectando em 5 segundos...\n')
+
+                    setTimeout(() => {
+
+                        reconectando = false
+
+                        conectarWhatsApp()
+
+                    }, 5000)
+                }
+            }
+        })
+
+    } catch (err) {
+
+        console.log('Erro geral:', err)
+
+        setTimeout(() => {
+            conectarWhatsApp()
+        }, 5000)
+    }
 }
 
 function iniciarSistema(sock) {
@@ -114,54 +130,56 @@ function iniciarSistema(sock) {
 
 async function verificarEscalas(sock) {
 
-    const authConfig = process.env.GOOGLE_CREDENTIALS
-    ? {
-        credentials: JSON.parse(process.env.GOOGLE_CREDENTIALS)
-    }
-    : {
-        keyFile: 'credentials.json'
-    }
+    try {
 
-    const auth = new google.auth.GoogleAuth({
-        ...authConfig,
-        scopes: ['https://www.googleapis.com/auth/spreadsheets']
-    })
+        const authConfig = process.env.GOOGLE_CREDENTIALS
+            ? {
+                credentials: JSON.parse(process.env.GOOGLE_CREDENTIALS)
+            }
+            : {
+                keyFile: 'credentials.json'
+            }
 
-    const client = await auth.getClient()
-
-    const sheets = google.sheets({
-        version: 'v4',
-        auth: client
-    })
-
-    const response = await sheets.spreadsheets.values.get({
-        spreadsheetId: process.env.SHEET_ID,
-        range: 'Sheet1!A:D'
-    })
-
-    const rows = response.data.values
-
-    const hoje = new Date()
-        .toLocaleDateString('sv-SE', {
-            timeZone: 'America/Campo_Grande'
+        const auth = new google.auth.GoogleAuth({
+            ...authConfig,
+            scopes: ['https://www.googleapis.com/auth/spreadsheets']
         })
 
-    console.log('Hoje:', hoje)
+        const client = await auth.getClient()
 
-    let encontrouEscala = false
+        const sheets = google.sheets({
+            version: 'v4',
+            auth: client
+        })
 
-    for(let i = 1; i < rows.length; i++) {
+        const response = await sheets.spreadsheets.values.get({
+            spreadsheetId: process.env.SHEET_ID,
+            range: 'Sheet1!A:D'
+        })
 
-        const data = rows[i][0]
-        const nome = rows[i][1]
-        const funcao = rows[i][2]
-        const telefone = rows[i][3]
+        const rows = response.data.values
 
-        if(data === hoje) {
+        const hoje = new Date()
+            .toLocaleDateString('sv-SE', {
+                timeZone: 'America/Campo_Grande'
+            })
 
-            encontrouEscala = true
+        console.log('Hoje:', hoje)
 
-            const mensagem = `
+        let encontrouEscala = false
+
+        for (let i = 1; i < rows.length; i++) {
+
+            const data = rows[i][0]
+            const nome = rows[i][1]
+            const funcao = rows[i][2]
+            const telefone = rows[i][3]
+
+            if (data === hoje) {
+
+                encontrouEscala = true
+
+                const mensagem = `
 Olá ${nome}!
 
 Essa é uma mensagem automática
@@ -173,21 +191,26 @@ Qualquer coisa me chama aqui!
 Função: ${funcao}
 
 Deus abençoe!
-            `
+                `
 
-            const numero = telefone + '@s.whatsapp.net'
+                const numero = telefone + '@s.whatsapp.net'
 
-            await sock.sendMessage(numero, {
-                text: mensagem
-            })
+                await sock.sendMessage(numero, {
+                    text: mensagem
+                })
 
-            console.log(`Mensagem enviada para ${nome}`)
+                console.log(`Mensagem enviada para ${nome}`)
+            }
         }
-    }
 
-    if(!encontrouEscala) {
+        if (!encontrouEscala) {
 
-        console.log('Nenhuma escala encontrada para hoje.\n')
+            console.log('Nenhuma escala encontrada para hoje.\n')
+        }
+
+    } catch (err) {
+
+        console.log('Erro ao verificar escalas:', err)
     }
 }
 
