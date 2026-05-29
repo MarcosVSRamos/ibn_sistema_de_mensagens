@@ -169,19 +169,15 @@ async function verificarEscalas(sock) {
 
                 encontrouEscala = true
 
-                const mensagem = `
-Olá ${nome}!
+                const mensagem = `Olá ${nome}!
 
-Essa é uma mensagem automática
-para ajudar a lembrar que
-você está escalado hoje 🙏
+Essa é uma mensagem automática para ajudar a lembrar que você está escalado hoje 🙏
 
 Qualquer coisa me chama aqui!
 
 Função: ${funcao}
 
-Deus abençoe!
-                `
+Deus abençoe!`
 
                 const numero = telefone + '@s.whatsapp.net'
 
