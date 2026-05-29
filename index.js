@@ -9,7 +9,7 @@ const {
     useMultiFileAuthState
 } = baileys
 
-import QRCode from 'qrcode'
+import qrcode from 'qrcode-terminal'
 
 import { google } from 'googleapis'
 
@@ -19,6 +19,10 @@ let sistemaIniciado = false
 let reconectando = false
 
 async function conectarWhatsApp() {
+
+    if (reconectando) return
+
+    reconectando = true
 
     try {
 
@@ -40,31 +44,20 @@ async function conectarWhatsApp() {
 
             if (qr) {
 
-                try {
+                console.clear()
 
-                    const qrBase64 = await QRCode.toDataURL(qr)
+                console.log('\nESCANEIE O QR CODE:\n')
 
-                    console.log('\n============================')
-                    console.log('COPIE O LINK ABAIXO E COLE NO NAVEGADOR:\n')
-                    console.log(qrBase64)
-                    console.log('\n============================\n')
-
-                } catch (err) {
-
-                    console.log('Erro ao gerar QR Code:', err)
-                }
-            }
-
-            if (connection === 'connecting') {
-
-                console.log('Conectando ao WhatsApp...')
+                qrcode.generate(qr, {
+                    small: true
+                })
             }
 
             if (connection === 'open') {
 
-                console.log('\nWhatsApp conectado!\n')
-
                 reconectando = false
+
+                console.log('\nWhatsApp conectado!\n')
 
                 if (!sistemaIniciado) {
 
@@ -76,32 +69,27 @@ async function conectarWhatsApp() {
 
             if (connection === 'close') {
 
-                const statusCode =
-                    lastDisconnect?.error?.output?.statusCode
+                reconectando = false
 
                 const shouldReconnect =
-                    statusCode !== DisconnectReason.loggedOut
+                    lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut
 
                 console.log('\nConexão fechada\n')
 
-                if (shouldReconnect && !reconectando) {
-
-                    reconectando = true
+                if (shouldReconnect) {
 
                     console.log('Reconectando em 5 segundos...\n')
 
                     setTimeout(() => {
-
-                        reconectando = false
-
                         conectarWhatsApp()
-
                     }, 5000)
                 }
             }
         })
 
     } catch (err) {
+
+        reconectando = false
 
         console.log('Erro geral:', err)
 
@@ -199,7 +187,7 @@ Deus abençoe!
                     text: mensagem
                 })
 
-                console.log(`Mensagem enviada para ${nome}`)
+                console.log(\`Mensagem enviada para \${nome}\`)
             }
         }
 
